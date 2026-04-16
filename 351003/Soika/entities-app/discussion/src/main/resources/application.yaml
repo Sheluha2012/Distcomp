@@ -1,0 +1,20 @@
+server:
+  port: 24130
+
+spring:
+  cassandra:
+    contact-points: 127.0.0.1
+    port: 9042
+    local-datacenter: datacenter1
+    keyspace-name: distcomp
+    schema-action: none
+    connection:
+      connect-timeout: 5s
+      init-query-timeout: 5s
+    request:
+      timeout: 5s
+
+  liquibase:
+    enabled: true
+    change-log: classpath:db/changelog/db.changelog-master.xml
+    url: jdbc:cassandra://127.0.0.1:9042/distcomp
