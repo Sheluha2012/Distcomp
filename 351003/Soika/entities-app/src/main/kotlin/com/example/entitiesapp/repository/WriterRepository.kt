@@ -1,8 +1,8 @@
 package com.example.entitiesapp.repository
 
 import com.example.entitiesapp.model.Writer
+import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.stereotype.Repository
 
 @Repository
-class WriterRepository :
-    AbstractInMemoryRepository<Writer>()
+interface WriterRepository : JpaRepository<Writer, Long>

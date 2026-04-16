@@ -26,27 +26,29 @@ class CommentService(
 
     fun getById(id: Long): CommentResponseTo =
         toResponse(
-            commentRepository.findById(id)
-                ?: throw NotFoundException("Comment with id=$id not found", 40404)
+            commentRepository.findById(id).orElseThrow {
+                NotFoundException("Comment with id=$id not found", 40404)
+            }
         )
 
     fun create(dto: CommentRequestTo): CommentResponseTo {
-        if (storyRepository.findById(dto.storyId) == null)
+        if (!storyRepository.existsById(dto.storyId))
             throw ValidationException("Story with id=${dto.storyId} does not exist", 40003)
         return toResponse(commentRepository.save(toEntity(dto)))
     }
 
     fun update(id: Long, dto: CommentRequestTo): CommentResponseTo {
-        if (commentRepository.findById(id) == null)
+        if (!commentRepository.existsById(id))
             throw NotFoundException("Comment with id=$id not found", 40404)
-        if (storyRepository.findById(dto.storyId) == null)
+        if (!storyRepository.existsById(dto.storyId))
             throw ValidationException("Story with id=${dto.storyId} does not exist", 40003)
-        return toResponse(commentRepository.update(id, toEntity(dto)))
+        val entity = toEntity(dto).apply { this.id = id }
+        return toResponse(commentRepository.save(entity))
     }
 
     fun delete(id: Long) {
-        if (commentRepository.findById(id) == null)
+        if (!commentRepository.existsById(id))
             throw NotFoundException("Comment with id=$id not found", 40404)
-        commentRepository.delete(id)
+        commentRepository.deleteById(id)
     }
 }

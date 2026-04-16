@@ -3,6 +3,7 @@ package com.example.entitiesapp.controller
 import com.example.entitiesapp.config.ApiConfig
 import com.example.entitiesapp.dto.WriterRequestTo
 import com.example.entitiesapp.dto.WriterResponseTo
+import com.example.entitiesapp.exception.ValidationException
 import com.example.entitiesapp.service.WriterService
 import jakarta.validation.Valid
 import org.springframework.http.HttpStatus
@@ -30,6 +31,12 @@ class WriterController(
     @PutMapping("/{id}")
     fun update(@PathVariable id: Long, @Valid @RequestBody dto: WriterRequestTo): ResponseEntity<WriterResponseTo> =
         ResponseEntity.ok(service.update(id, dto))
+
+    @PutMapping
+    fun updateFromBody(@Valid @RequestBody dto: WriterRequestTo): ResponseEntity<WriterResponseTo> {
+        val id = dto.id ?: throw ValidationException("Id is required", 40000)
+        return ResponseEntity.ok(service.update(id, dto))
+    }
 
     @DeleteMapping("/{id}")
     fun delete(@PathVariable id: Long): ResponseEntity<Void> {

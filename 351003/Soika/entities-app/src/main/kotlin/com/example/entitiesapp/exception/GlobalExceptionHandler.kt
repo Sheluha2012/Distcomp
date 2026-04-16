@@ -1,5 +1,6 @@
 package com.example.entitiesapp.exception
 
+import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.MethodArgumentNotValidException
@@ -28,9 +29,14 @@ class GlobalExceptionHandler {
             .body(ApiError(message, 40000))
     }
 
+    @ExceptionHandler(DataIntegrityViolationException::class)
+    fun handleDataIntegrity(ex: DataIntegrityViolationException): ResponseEntity<ApiError> =
+        ResponseEntity.status(HttpStatus.FORBIDDEN)
+            .body(ApiError(ex.message ?: "Data integrity violation", 40300))
+
     @ExceptionHandler(Exception::class)
     fun handleOther(ex: Exception): ResponseEntity<ApiError> {
-        ex.printStackTrace()   // <- добавляем
+        //ex.printStackTrace()
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
             .body(ApiError("Internal server error", 50000))
     }

@@ -4,26 +4,44 @@ import com.example.entitiesapp.dto.StoryRequestTo
 import com.example.entitiesapp.dto.StoryResponseTo
 import com.example.entitiesapp.exception.NotFoundException
 import com.example.entitiesapp.exception.ValidationException
+import com.example.entitiesapp.model.Mark
 import com.example.entitiesapp.model.Story
 import com.example.entitiesapp.repository.MarkRepository
 import com.example.entitiesapp.repository.StoryRepository
 import com.example.entitiesapp.repository.WriterRepository
+import com.example.entitiesapp.repository.CommentRepository
 import org.springframework.stereotype.Service
+import java.time.LocalDateTime
 
 @Service
 class StoryService(
     private val storyRepository: StoryRepository,
     private val writerRepository: WriterRepository,
-    private val markRepository: MarkRepository
+    private val markRepository: MarkRepository,
+    private val commentRepository: CommentRepository
 ) {
 
-    private fun toEntity(dto: StoryRequestTo) =
-        Story(
+    private fun toEntity(dto: StoryRequestTo): Story {
+        val marksByIds = dto.markIds.map {
+            markRepository.findById(it).orElseThrow {
+                ValidationException("Mark id=$it does not exist", 40002)
+            }
+        }
+
+        val marksByName = dto.marks.map { name ->
+            markRepository.findByName(name)
+                ?: markRepository.save(Mark(name = name))
+        }
+
+        val allMarks = (marksByIds + marksByName).toMutableSet()
+
+        return Story(
+            writerId = dto.writerId,
             title = dto.title,
             content = dto.content,
-            writerId = dto.writerId,
-            markIds = dto.markIds.toMutableSet()
+            marks = allMarks
         )
+    }
 
     private fun toResponse(entity: Story) =
         StoryResponseTo(
@@ -31,7 +49,7 @@ class StoryService(
             title = entity.title,
             content = entity.content,
             writerId = entity.writerId,
-            markIds = entity.markIds
+            markIds = entity.marks.map { it.id!! }.toSet()
         )
 
     fun getAll(): List<StoryResponseTo> =
@@ -39,45 +57,54 @@ class StoryService(
 
     fun getById(id: Long): StoryResponseTo =
         toResponse(
-            storyRepository.findById(id)
-                ?: throw NotFoundException("Story with id=$id not found", 40403)
+            storyRepository.findById(id).orElseThrow {
+                NotFoundException("Story with id=$id not found", 40403)
+            }
         )
 
     fun create(dto: StoryRequestTo): StoryResponseTo {
-        if (writerRepository.findById(dto.writerId) == null)
+        if (!writerRepository.existsById(dto.writerId))
             throw ValidationException("Writer does not exist", 40001)
-
-        dto.markIds.forEach {
-            if (markRepository.findById(it) == null)
-                throw ValidationException("Mark id=$it does not exist", 40002)
+        println(">>> markIds from request: ${dto.markIds}")
+        val entity = toEntity(dto).apply {
+            created = LocalDateTime.now()
+            modified = LocalDateTime.now()
         }
-
-        return toResponse(storyRepository.save(toEntity(dto)))
+        println(">>> marks in entity before save: ${entity.marks.map { it.id }}")
+        val saved = storyRepository.save(entity)
+        println(">>> marks in saved entity: ${saved.marks.map { it.id }}")
+        return toResponse(saved)
     }
 
     fun update(id: Long, dto: StoryRequestTo): StoryResponseTo {
-        val story = storyRepository.findById(id)
-            ?: throw NotFoundException("Story with id=$id not found", 40403)
-
-        if (dto.title.isBlank() || dto.title.length < 3)
-            throw ValidationException("Title is too short", 40003)
-        if (dto.content.isBlank() || dto.content.length < 3)
-            throw ValidationException("Content is too short", 40004)
-
-        if (writerRepository.findById(dto.writerId) == null)
+        if (!storyRepository.existsById(id))
+            throw NotFoundException("Story with id=$id not found", 40403)
+        if (!writerRepository.existsById(dto.writerId))
             throw ValidationException("Writer does not exist", 40001)
-
-        dto.markIds.forEach {
-            if (markRepository.findById(it) == null)
-                throw ValidationException("Mark id=$it does not exist", 40002)
+        val entity = toEntity(dto).apply {
+            this.id = id
+            modified = LocalDateTime.now()
         }
-
-        return toResponse(storyRepository.update(id, toEntity(dto)))
+        return toResponse(storyRepository.save(entity))
     }
 
     fun delete(id: Long) {
-        if (storyRepository.findById(id) == null)
+        if (!storyRepository.existsById(id))
             throw NotFoundException("Story with id=$id not found", 40403)
-        storyRepository.delete(id)
+
+        val story = storyRepository.findById(id).get()
+        val markIds = story.marks.map { it.id!! }.toSet()
+
+        commentRepository.deleteAllByStoryId(id)
+        story.marks.clear()
+        storyRepository.save(story)
+        storyRepository.deleteById(id)
+
+        markIds.forEach { markId ->
+            val isUsed = storyRepository.existsByMarksId(markId)
+            if (!isUsed) {
+                markRepository.deleteById(markId)
+            }
+        }
     }
 }

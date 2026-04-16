@@ -2,8 +2,26 @@ server:
   port: 24110
 
 spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/distcomp?currentSchema=distcomp
+    username: postgres
+    password: postgres
+    driver-class-name: org.postgresql.Driver
   jackson:
-    serialization:
-      wrap-root-value: false
     deserialization:
-      unwrap-root-value: false
+      fail-on-numbers-for-enums: true
+    mapper:
+      allow-coercion-of-scalars: false
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: true
+    properties:
+      hibernate:
+        default_schema: distcomp
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+
+  liquibase:
+    change-log: classpath:db/changelog/db.changelog-master.xml
+    default-schema: distcomp
