@@ -16,7 +16,8 @@ class CommentService(private val repository: CommentRepository) {
         id = entity.id,
         content = entity.content,
         storyId = entity.storyId,
-        country = entity.country
+        country = entity.country,
+        state = entity.state
     )
 
     fun getAll(): List<CommentResponseTo> = repository.findAll().map { toResponse(it) }
@@ -28,12 +29,14 @@ class CommentService(private val repository: CommentRepository) {
 
     fun create(dto: CommentRequestTo): CommentResponseTo {
         val entity = Comment(
-            id = Math.abs(Random.nextLong(1000000)),
+            id = dto.id ?: Math.abs(Random.nextLong(1000000)),
             storyId = dto.storyId,
             content = dto.content,
-            country = dto.country ?: "Unknown"
+            country = dto.country ?: "Unknown",
+            state = dto.state
         )
-        return toResponse(repository.save(entity))
+        val saved = repository.save(entity)
+        return toResponse(saved)
     }
 
     fun update(id: Long, dto: CommentRequestTo): CommentResponseTo {

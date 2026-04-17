@@ -1,5 +1,6 @@
 package com.example.entitiesapp.model
 
+import com.example.entitiesapp.dto.CommentState
 import org.springframework.data.cassandra.core.cql.Ordering
 import org.springframework.data.cassandra.core.cql.PrimaryKeyType
 import org.springframework.data.cassandra.core.mapping.Column
@@ -18,5 +19,8 @@ data class Comment(
     val country: String,
 
     @Column("content")
-    val content: String
+    val content: String,
+
+    @Column("state")
+    val state: CommentState = CommentState.PENDING
 )

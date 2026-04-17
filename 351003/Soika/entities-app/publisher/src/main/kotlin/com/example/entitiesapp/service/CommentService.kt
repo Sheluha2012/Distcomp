@@ -2,42 +2,58 @@ package com.example.entitiesapp.service
 
 import com.example.entitiesapp.dto.CommentRequestTo
 import com.example.entitiesapp.dto.CommentResponseTo
-import org.springframework.core.ParameterizedTypeReference
-import org.springframework.http.MediaType
+import com.example.entitiesapp.dto.CommentState
+import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.module.kotlin.readValue
+import org.apache.kafka.clients.producer.ProducerRecord
+import org.springframework.kafka.requestreply.ReplyingKafkaTemplate
 import org.springframework.stereotype.Service
-import org.springframework.web.client.RestClient
+import kotlin.random.Random
 
 @Service
-class CommentService(private val discussionClient: RestClient) {
+class CommentService(
+    private val replyingKafkaTemplate: ReplyingKafkaTemplate<String, String, String>,
+    private val objectMapper: ObjectMapper
+) {
+    private val inTopic = "InTopic"
 
-    fun getAll(): List<CommentResponseTo> = discussionClient.get()
-        .uri("/comments")
-        .retrieve()
-        .body(object : ParameterizedTypeReference<List<CommentResponseTo>>() {}) ?: emptyList()
+    private fun sendRequest(op: String, value: Any?, key: String? = null): String {
+        val jsonValue = if (value is String) value else objectMapper.writeValueAsString(value)
+        val record = ProducerRecord<String, String>(inTopic, key, jsonValue)
+        record.headers().add("op", op.toByteArray())
 
-    fun getById(id: Long): CommentResponseTo = discussionClient.get()
-        .uri("/comments/$id")
-        .retrieve()
-        .body(CommentResponseTo::class.java)!!
+        val reply = replyingKafkaTemplate.sendAndReceive(record)
+        return reply.get().value()
+    }
 
-    fun create(dto: CommentRequestTo): CommentResponseTo = discussionClient.post()
-        .uri("/comments")
-        .contentType(MediaType.APPLICATION_JSON)
-        .body(dto)
-        .retrieve()
-        .body(CommentResponseTo::class.java)!!
+    fun getAll(): List<CommentResponseTo> {
+        val responseJson = sendRequest("GET_ALL", "EMPTY")
+        return objectMapper.readValue(responseJson)
+    }
 
-    fun update(id: Long, dto: CommentRequestTo): CommentResponseTo = discussionClient.put()
-        .uri("/comments/$id")
-        .body(dto)
-        .retrieve()
-        .body(CommentResponseTo::class.java)!!
+    fun getById(id: Long): CommentResponseTo {
+        val responseJson = sendRequest("GET_BY_ID", id.toString())
+        return objectMapper.readValue(responseJson)
+    }
+
+    fun create(dto: CommentRequestTo): CommentResponseTo {
+        val generatedId = Math.abs(Random.nextLong(1000000))
+        val pendingDto = dto.copy(id = generatedId, state = CommentState.PENDING)
+
+        val responseJson = sendRequest("CREATE", pendingDto, dto.storyId.toString())
+        return objectMapper.readValue(responseJson)
+    }
+
+    fun update(id: Long, dto: CommentRequestTo): CommentResponseTo {
+        val responseJson = sendRequest("UPDATE", dto.copy(id = id), dto.storyId.toString())
+        return objectMapper.readValue(responseJson)
+    }
 
     fun delete(id: Long) {
-        discussionClient.delete().uri("/comments/$id").retrieve().toBodilessEntity()
+        sendRequest("DELETE", id.toString())
     }
 
     fun deleteByStory(storyId: Long) {
-        discussionClient.delete().uri("/comments/story/$storyId").retrieve().toBodilessEntity()
+        sendRequest("DELETE_BY_STORY", storyId.toString(), storyId.toString())
     }
 }

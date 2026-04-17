@@ -4,5 +4,6 @@ data class CommentResponseTo(
     val id: Long,
     val content: String,
     val storyId: Long,
-    val country: String
+    val country: String,
+    val state: CommentState
 )

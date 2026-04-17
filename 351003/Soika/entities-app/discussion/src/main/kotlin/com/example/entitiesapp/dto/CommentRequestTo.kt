@@ -14,5 +14,6 @@ data class CommentRequestTo(
     @field:NotNull
     val storyId: Long,
 
-    val country: String? = null
+    val country: String? = null,
+    val state: CommentState = CommentState.PENDING
 )
