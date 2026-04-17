@@ -3,6 +3,7 @@ package com.example.entitiesapp.dto
 import jakarta.validation.constraints.NotBlank
 import jakarta.validation.constraints.NotNull
 import jakarta.validation.constraints.Size
+import java.io.Serializable
 
 data class CommentRequestTo(
     val id: Long? = null,
@@ -16,4 +17,4 @@ data class CommentRequestTo(
 
     val country: String? = null,
     val state: CommentState = CommentState.PENDING
-)
+) : Serializable

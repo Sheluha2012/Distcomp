@@ -3,6 +3,7 @@ package com.example.entitiesapp.dto
 import jakarta.validation.constraints.NotBlank
 import jakarta.validation.constraints.NotNull
 import jakarta.validation.constraints.Size
+import java.io.Serializable
 
 data class StoryRequestTo(
     val id: Long? = null,
@@ -21,4 +22,4 @@ data class StoryRequestTo(
     val markIds: Set<Long> = emptySet(),
 
     val marks: Set<String> = emptySet()
-)
+) : Serializable

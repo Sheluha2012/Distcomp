@@ -2,6 +2,7 @@ package com.example.entitiesapp.dto
 
 import jakarta.validation.constraints.NotBlank
 import jakarta.validation.constraints.Size
+import java.io.Serializable
 
 data class WriterRequestTo(
     val id: Long? = null,
@@ -21,4 +22,4 @@ data class WriterRequestTo(
     @field:NotBlank
     @field:Size(min = 2, max = 64)
     val lastname: String
-)
+) : Serializable
