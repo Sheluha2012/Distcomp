@@ -1,6 +1,7 @@
 package com.example.entitiesapp.model
 
 import jakarta.persistence.*
+import com.example.entitiesapp.dto.Role
 
 @Entity
 @Table(name = "tbl_writer", schema = "distcomp")
@@ -17,5 +18,9 @@ data class Writer(
     var firstname: String,
 
     @Column(nullable = false, length = 64)
-    var lastname: String
+    var lastname: String,
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 16)
+    var role: Role = Role.CUSTOMER
 ) : BaseEntity(id)

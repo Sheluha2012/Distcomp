@@ -34,6 +34,17 @@ class GlobalExceptionHandler {
         ResponseEntity.status(HttpStatus.FORBIDDEN)
             .body(ApiError(ex.message ?: "Data integrity violation", 40300))
 
+    @ExceptionHandler(org.springframework.security.core.AuthenticationException::class)
+    fun handleAuthException(ex: org.springframework.security.core.AuthenticationException): ResponseEntity<ApiError> {
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+            .body(ApiError("Invalid login or password", 40100))
+    }
+
+    @ExceptionHandler(org.springframework.security.access.AccessDeniedException::class)
+    fun handleAccessDenied(ex: org.springframework.security.access.AccessDeniedException): ResponseEntity<ApiError> =
+        ResponseEntity.status(HttpStatus.FORBIDDEN)
+            .body(ApiError("Access denied: ${ex.message}", 40301))
+
     @ExceptionHandler(Exception::class)
     fun handleOther(ex: Exception): ResponseEntity<ApiError> {
         //ex.printStackTrace()

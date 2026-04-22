@@ -12,6 +12,8 @@ import com.example.entitiesapp.repository.WriterRepository
 import org.springframework.cache.annotation.CacheEvict
 import org.springframework.cache.annotation.CachePut
 import org.springframework.cache.annotation.Cacheable
+import org.springframework.security.access.AccessDeniedException
+import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.stereotype.Service
 import java.time.LocalDateTime
 
@@ -23,64 +25,56 @@ class StoryService(
     private val commentService: CommentService
 ) {
 
+    private fun checkOwnership(storyId: Long) {
+        val auth = SecurityContextHolder.getContext().authentication
+        if (auth == null || auth.name == "anonymousUser") return
+
+        val isAdmin = auth.authorities.any { it.authority == "ROLE_ADMIN" }
+        val story = storyRepository.findById(storyId).orElseThrow { NotFoundException("Story not found", 40403) }
+        val owner = writerRepository.findById(story.writerId).get()
+
+        if (!isAdmin && owner.login != auth.name) {
+            throw AccessDeniedException("You can only manage your own stories")
+        }
+    }
+
     private fun toEntity(dto: StoryRequestTo): Story {
-        val marksByIds = dto.markIds.map {
-            markRepository.findById(it).orElseThrow { ValidationException("Mark id=$it missing", 40002) }
-        }
-        val marksByName = dto.marks.map { name ->
-            markRepository.findByName(name) ?: markRepository.save(Mark(name = name))
-        }
-        return Story(
-            writerId = dto.writerId,
-            title = dto.title,
-            content = dto.content,
-            marks = (marksByIds + marksByName).toMutableSet()
-        )
+        val marksByIds = dto.markIds.map { markRepository.findById(it).orElseThrow { ValidationException("Mark missing", 40002) } }
+        val marksByName = dto.marks.map { name -> markRepository.findByName(name) ?: markRepository.save(Mark(name = name)) }
+        return Story(writerId = dto.writerId, title = dto.title, content = dto.content, marks = (marksByIds + marksByName).toMutableSet())
     }
 
     private fun toResponse(entity: Story) = StoryResponseTo(
-        id = entity.id!!,
-        title = entity.title,
-        content = entity.content,
-        writerId = entity.writerId,
-        markIds = entity.marks.map { it.id!! }.toSet()
+        id = entity.id!!, title = entity.title, content = entity.content, writerId = entity.writerId, markIds = entity.marks.map { it.id!! }.toSet()
     )
 
     fun getAll(): List<StoryResponseTo> = storyRepository.findAll().map { toResponse(it) }
 
     @Cacheable(value = ["stories"], key = "#id")
-    fun getById(id: Long): StoryResponseTo {
-        println("!!! Cache MISS for Story $id")
-        return toResponse(
-            storyRepository.findById(id).orElseThrow {
-                NotFoundException("Story with id=$id not found", 40403)
-            }
-        )
-    }
+    fun getById(id: Long): StoryResponseTo = toResponse(storyRepository.findById(id).orElseThrow { NotFoundException("Story not found", 40403) })
 
-    @CachePut(value = ["stories"], key = "#result.id")
     fun create(dto: StoryRequestTo): StoryResponseTo {
-        if (!writerRepository.existsById(dto.writerId)) throw ValidationException("Writer missing", 40001)
-        val entity = toEntity(dto).apply {
-            created = LocalDateTime.now()
-            modified = LocalDateTime.now()
+        val auth = SecurityContextHolder.getContext().authentication
+        if (auth != null && auth.name != "anonymousUser") {
+            val currentWriter = writerRepository.findByLogin(auth.name)
+            if (dto.writerId != currentWriter?.id && !auth.authorities.any { it.authority == "ROLE_ADMIN" }) {
+                throw AccessDeniedException("Cannot create story for another writer")
+            }
         }
+        val entity = toEntity(dto).apply { created = LocalDateTime.now(); modified = LocalDateTime.now() }
         return toResponse(storyRepository.save(entity))
     }
 
     @CachePut(value = ["stories"], key = "#id")
     fun update(id: Long, dto: StoryRequestTo): StoryResponseTo {
-        if (!storyRepository.existsById(id)) throw NotFoundException("Story not found", 40403)
-        val entity = toEntity(dto).apply {
-            this.id = id
-            modified = LocalDateTime.now()
-        }
+        checkOwnership(id)
+        val entity = toEntity(dto).apply { this.id = id; modified = LocalDateTime.now() }
         return toResponse(storyRepository.save(entity))
     }
 
     @CacheEvict(value = ["stories"], key = "#id")
     fun delete(id: Long) {
-        if (!storyRepository.existsById(id)) throw NotFoundException("Story not found", 40403)
+        checkOwnership(id)
         commentService.deleteByStory(id)
         storyRepository.deleteById(id)
     }

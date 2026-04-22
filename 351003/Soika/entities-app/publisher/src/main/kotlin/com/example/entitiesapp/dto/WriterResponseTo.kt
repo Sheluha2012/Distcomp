@@ -7,5 +7,6 @@ data class WriterResponseTo(
     val login: String = "",
     val password: String = "",
     val firstname: String = "",
-    val lastname: String = ""
+    val lastname: String = "",
+    val role: Role = Role.CUSTOMER
 ) : Serializable

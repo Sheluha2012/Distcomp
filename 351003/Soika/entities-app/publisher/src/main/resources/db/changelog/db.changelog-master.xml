@@ -98,4 +98,17 @@
                 constraintName="pk_story_mark"/>
     </changeSet>
 
+    <changeSet id="6" author="app">
+        <addColumn tableName="tbl_writer" schemaName="distcomp">
+            <column name="role" type="varchar(16)" defaultValue="CUSTOMER">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+
+        <update tableName="tbl_writer" schemaName="distcomp">
+            <column name="password" value="$2a$10$76Yv9p89EpsjYV2XW8.zS.Yp1ZfQvD.fJ7vXfH.C7r6M7T6k1Z2Wq"/>
+            <where>login = 'isoyko19@gmail.com'</where>
+        </update>
+    </changeSet>
+
 </databaseChangeLog>

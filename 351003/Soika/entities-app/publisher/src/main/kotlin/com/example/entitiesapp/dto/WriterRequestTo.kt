@@ -21,5 +21,7 @@ data class WriterRequestTo(
 
     @field:NotBlank
     @field:Size(min = 2, max = 64)
-    val lastname: String
+    val lastname: String,
+
+    val role: Role = Role.CUSTOMER
 ) : Serializable

@@ -11,7 +11,7 @@ import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
 
 @RestController
-@RequestMapping("${ApiConfig.API_V1}/writers")
+@RequestMapping(value = ["${ApiConfig.API_V1}/writers", "${ApiConfig.API_V2}/writers"])
 class WriterController(
     private val service: WriterService
 ) {
